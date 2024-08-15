@@ -8,7 +8,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         public let primaryBinaryPath: AbsolutePath
         public let linking: BinaryLinking
         public let mergeable: Bool
-        public let status: FrameworkStatus
+        public let status: LinkingStatus
 
         public init(
             path: AbsolutePath,
@@ -16,7 +16,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             primaryBinaryPath: AbsolutePath,
             linking: BinaryLinking,
             mergeable: Bool,
-            status: FrameworkStatus,
+            status: LinkingStatus,
             macroPath _: AbsolutePath?
         ) {
             self.path = path
@@ -60,7 +60,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         bcsymbolmapPaths: [AbsolutePath],
         linking: BinaryLinking,
         architectures: [BinaryArchitecture],
-        status: FrameworkStatus
+        status: LinkingStatus
     )
 
     /// A dependency that represents a pre-compiled library.
@@ -82,10 +82,10 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
     case packageProduct(path: AbsolutePath, product: String, type: PackageProductType)
 
     /// A dependency that represents a target that is defined in the project at the given path.
-    case target(name: String, path: AbsolutePath)
+    case target(name: String, path: AbsolutePath, status: LinkingStatus)
 
     /// A dependency that represents an SDK
-    case sdk(name: String, path: AbsolutePath, status: SDKStatus, source: SDKSource)
+    case sdk(name: String, path: AbsolutePath, status: LinkingStatus, source: SDKSource)
 
     public func hash(into hasher: inout Hasher) {
         switch self {
@@ -107,7 +107,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             hasher.combine(path)
             hasher.combine(product)
             hasher.combine(isPlugin)
-        case let .target(name, path):
+        case let .target(name, path, _):
             hasher.combine("target")
             hasher.combine(name)
             hasher.combine(path)
@@ -225,7 +225,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
 
     public var targetDependency: (name: String, path: AbsolutePath)? {
         switch self {
-        case let .target(name: name, path: path):
+        case let .target(name: name, path: path, status: _):
             return (name, path)
         default:
             return nil
@@ -269,7 +269,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             return path.basename
         case let .packageProduct(_, product, _):
             return product
-        case let .target(name, _):
+        case let .target(name, _, _):
             return name
         case let .sdk(name, _, _, _):
             return name
@@ -294,7 +294,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             bcsymbolmapPaths: [AbsolutePath] = [],
             linking: BinaryLinking = .dynamic,
             architectures: [BinaryArchitecture] = [.armv7],
-            status: FrameworkStatus = .required
+            status: LinkingStatus = .required
         ) -> GraphDependency {
             GraphDependency.framework(
                 path: path,
@@ -319,7 +319,7 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
             primaryBinaryPath: AbsolutePath = AbsolutePath.root
                 .appending(try! RelativePath(validating: "Test.xcframework/Test")),
             linking: BinaryLinking = .dynamic,
-            status: FrameworkStatus = .required,
+            status: LinkingStatus = .required,
             macroPath: AbsolutePath? = nil
         ) -> GraphDependency {
             .xcframework(
@@ -341,14 +341,15 @@ public enum GraphDependency: Hashable, CustomStringConvertible, Comparable, Coda
         ) -> GraphDependency {
             .target(
                 name: name,
-                path: path
+                path: path,
+                status: .required
             )
         }
 
         public static func testSDK(
             name: String = "XCTest.framework",
             path: AbsolutePath = AbsolutePath.root.appending(try! RelativePath(validating: "XCTest.framework")),
-            status: SDKStatus = .required,
+            status: LinkingStatus = .required,
             source: SDKSource = .system
         ) -> GraphDependency {
             .sdk(

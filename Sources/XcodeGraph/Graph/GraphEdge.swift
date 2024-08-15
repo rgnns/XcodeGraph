@@ -12,6 +12,6 @@ public struct GraphEdge: Hashable, Codable {
 
     public init(from: GraphDependency, to: GraphTarget) {
         self.from = from
-        self.to = .target(name: to.target.name, path: to.path)
+        self.to = .target(name: to.target.name, path: to.path, status: .required)
     }
 }
